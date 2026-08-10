@@ -1,7 +1,9 @@
 from datetime import date, timedelta
 
 import pandas as pd
+import pytest
 
+from fastapi import HTTPException
 from ml.api import ForecastRequest, generate_forecast_payload, forecast
 
 
@@ -67,7 +69,6 @@ def test_insufficient_history_skips_training(monkeypatch):
         raise AssertionError("training should not run")
 
     monkeypatch.setattr("ml.api.train_direct_models", fail_training)
-    monkeypatch.setattr("ml.api.MINIMUM_HISTORY_DAYS", 28)
 
     payload = generate_forecast_payload(make_tables(days=10))
 
@@ -75,12 +76,22 @@ def test_insufficient_history_skips_training(monkeypatch):
 
 
 def test_minimum_history_days_can_be_configured(monkeypatch):
-    monkeypatch.setattr("ml.api.MINIMUM_HISTORY_DAYS", 46)
+    monkeypatch.setenv("MINIMUM_HISTORY_DAYS", "46")
 
     payload = generate_forecast_payload(make_tables(days=45))
 
     assert payload["forecastMethod"] == "BASELINE"
     assert payload["modelVersion"] == "baseline-v1"
+
+
+def test_invalid_minimum_history_days_returns_http_422(monkeypatch):
+    monkeypatch.setenv("MINIMUM_HISTORY_DAYS", "not-an-integer")
+
+    with pytest.raises(HTTPException) as error:
+        forecast(ForecastRequest(), make_tables())
+
+    assert error.value.status_code == 422
+    assert "MINIMUM_HISTORY_DAYS" in error.value.detail
 
 
 def test_forecast_endpoint_returns_forecast_payload():

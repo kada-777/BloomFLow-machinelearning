@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from ml.models import FEATURE_COLUMNS
-from ml.prediction import build_forecast_results
+from ml.prediction import build_baseline_results, build_forecast_results
 
 
 class FakeModel:
@@ -61,3 +61,38 @@ def test_build_forecast_results_rejects_missing_model_horizon():
             pd.DataFrame(),
             cutoff_date=date(2025, 6, 30),
         )
+
+
+def test_build_baseline_results_uses_seven_day_moving_average_for_each_horizon():
+    sales_grid = pd.DataFrame(
+        {
+            "date": [
+                date(2025, 6, 24),
+                date(2025, 6, 25),
+                date(2025, 6, 26),
+                date(2025, 6, 27),
+                date(2025, 6, 28),
+                date(2025, 6, 29),
+                date(2025, 6, 30),
+            ],
+            "branchId": [1] * 7,
+            "flowerId": [10] * 7,
+            "soldQuantity": [1, 2, 3, 4, 5, 6, 7],
+        }
+    )
+    branches = pd.DataFrame({"id": [1], "name": ["Central"]})
+    flowers = pd.DataFrame({"id": [10], "name": ["Rose Red"]})
+
+    result = build_baseline_results(
+        sales_grid,
+        branches,
+        flowers,
+        cutoff_date=date(2025, 6, 30),
+        model_version="baseline-v1",
+    )
+
+    assert len(result) == 3
+    assert result["forecastDemand"].tolist() == [4.0, 4.0, 4.0]
+    assert set(result["forecastMethod"]) == {"BASELINE"}
+    assert set(result["modelName"]) == {"SevenDayMovingAverage"}
+    assert set(result["modelVersion"]) == {"baseline-v1"}

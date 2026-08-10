@@ -19,11 +19,18 @@ from ml.supabase_client import create_supabase_client
 app = FastAPI(title="BloomFlow Forecast Service", version="1.0.0")
 
 DEFAULT_MINIMUM_HISTORY_DAYS = 28
-MINIMUM_HISTORY_DAYS = int(
-    os.getenv("MINIMUM_HISTORY_DAYS", str(DEFAULT_MINIMUM_HISTORY_DAYS))
-)
-if MINIMUM_HISTORY_DAYS < 1:
-    raise ValueError("MINIMUM_HISTORY_DAYS must be greater than zero")
+
+
+def get_minimum_history_days() -> int:
+    """Read and validate the request-time minimum history configuration."""
+    raw_value = os.getenv("MINIMUM_HISTORY_DAYS", str(DEFAULT_MINIMUM_HISTORY_DAYS))
+    try:
+        minimum_days = int(raw_value)
+    except (TypeError, ValueError):
+        raise ValueError("MINIMUM_HISTORY_DAYS must be a positive integer")
+    if minimum_days < 1:
+        raise ValueError("MINIMUM_HISTORY_DAYS must be a positive integer")
+    return minimum_days
 
 
 class ForecastRequest(BaseModel):
@@ -42,6 +49,7 @@ def generate_forecast_payload(
     model_version: str = "hgb-v1",
 ) -> dict:
     """Run the forecast pipeline and return a JSON-ready response payload."""
+    minimum_history_days = get_minimum_history_days()
     latest_observed_date = get_latest_sales_date(tables["daily_sales"])
     cutoff_date = forecast_date or latest_observed_date
     if cutoff_date > latest_observed_date:
@@ -62,7 +70,7 @@ def generate_forecast_payload(
         }
 
     if not has_sufficient_sales_history(
-        tables["daily_sales"], MINIMUM_HISTORY_DAYS
+        tables["daily_sales"], minimum_history_days
     ):
         return build_baseline_payload(
             build_complete_sales_grid(tables, cutoff_date=cutoff_date)
