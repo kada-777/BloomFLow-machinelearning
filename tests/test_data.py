@@ -4,6 +4,7 @@ from pathlib import Path
 
 from ml.data import (
     get_latest_sales_date,
+    has_sufficient_sales_history,
     load_training_data,
     profile_training_data,
     validate_required_columns,
@@ -24,6 +25,22 @@ def test_latest_sales_date_uses_latest_observed_date():
 def test_latest_sales_date_rejects_empty_sales_data():
     with pytest.raises(ValueError, match="daily sales data is empty"):
         get_latest_sales_date(pd.DataFrame({"salesDate": []}))
+
+
+def test_has_sufficient_sales_history_counts_distinct_calendar_days():
+    daily_sales = pd.DataFrame(
+        {"salesDate": ["2024-01-01", "2024-01-01", "2024-01-02"]}
+    )
+
+    assert has_sufficient_sales_history(daily_sales, minimum_days=2)
+    assert not has_sufficient_sales_history(daily_sales, minimum_days=3)
+
+
+def test_has_sufficient_sales_history_requires_positive_minimum_days():
+    with pytest.raises(ValueError, match="minimum_days must be greater than zero"):
+        has_sufficient_sales_history(
+            pd.DataFrame({"salesDate": ["2024-01-01"]}), minimum_days=0
+        )
 
 
 def test_required_columns_reports_missing_columns():

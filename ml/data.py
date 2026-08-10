@@ -42,6 +42,18 @@ def get_latest_sales_date(daily_sales: pd.DataFrame) -> date:
     return sales_dates.max().date()
 
 
+def has_sufficient_sales_history(
+    daily_sales: pd.DataFrame, minimum_days: int
+) -> bool:
+    if minimum_days < 1:
+        raise ValueError("minimum_days must be greater than zero")
+    validate_required_columns(daily_sales, "daily_sales", {"salesDate"})
+    sales_dates = pd.to_datetime(daily_sales["salesDate"], errors="coerce")
+    if sales_dates.isna().any():
+        raise ValueError("daily_sales contains an invalid salesDate")
+    return sales_dates.dt.date.nunique() >= minimum_days
+
+
 def fetch_table(client, table_name: str, page_size: int = 1000) -> pd.DataFrame:
     """Read one Supabase table in pages and return it as a DataFrame."""
     if page_size < 1:
