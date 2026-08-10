@@ -1,17 +1,29 @@
 from datetime import date
+import os
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
 
-from ml.data import get_latest_sales_date, load_training_data
+from ml.data import (
+    get_latest_sales_date,
+    has_sufficient_sales_history,
+    load_training_data,
+)
 from ml.features import add_forecast_targets, add_model_features, build_complete_sales_grid
 from ml.models import train_direct_models
-from ml.prediction import build_forecast_results
+from ml.prediction import build_baseline_results, build_forecast_results
 from ml.supabase_client import create_supabase_client
 
 
 app = FastAPI(title="BloomFlow Forecast Service", version="1.0.0")
+
+DEFAULT_MINIMUM_HISTORY_DAYS = 28
+MINIMUM_HISTORY_DAYS = int(
+    os.getenv("MINIMUM_HISTORY_DAYS", str(DEFAULT_MINIMUM_HISTORY_DAYS))
+)
+if MINIMUM_HISTORY_DAYS < 1:
+    raise ValueError("MINIMUM_HISTORY_DAYS must be greater than zero")
 
 
 class ForecastRequest(BaseModel):
@@ -35,9 +47,34 @@ def generate_forecast_payload(
     if cutoff_date > latest_observed_date:
         raise ValueError("forecastDate cannot be after the latest observed sales date")
 
+    def build_baseline_payload(sales_grid):
+        results = build_baseline_results(
+            sales_grid,
+            tables["branches"],
+            tables["flowers"],
+            cutoff_date=cutoff_date,
+        )
+        return {
+            "cutoffDate": cutoff_date,
+            "forecastMethod": "BASELINE",
+            "modelVersion": "baseline-v1",
+            "results": results.to_dict(orient="records"),
+        }
+
+    if not has_sufficient_sales_history(
+        tables["daily_sales"], MINIMUM_HISTORY_DAYS
+    ):
+        return build_baseline_payload(
+            build_complete_sales_grid(tables, cutoff_date=cutoff_date)
+        )
+
     sales_grid = build_complete_sales_grid(tables, cutoff_date=cutoff_date)
     feature_data = add_forecast_targets(add_model_features(sales_grid))
-    models = train_direct_models(feature_data)
+    try:
+        models = train_direct_models(feature_data)
+    except ValueError:
+        return build_baseline_payload(sales_grid)
+
     results = build_forecast_results(
         feature_data,
         models,

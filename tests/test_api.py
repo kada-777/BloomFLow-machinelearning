@@ -53,9 +53,53 @@ def test_generate_forecast_payload_returns_api_ready_results():
     assert {row["horizon"] for row in payload["results"]} == {1, 2, 3}
 
 
+def test_generate_forecast_payload_uses_baseline_for_insufficient_history():
+    payload = generate_forecast_payload(make_tables(days=10))
+
+    assert payload["forecastMethod"] == "BASELINE"
+    assert payload["modelVersion"] == "baseline-v1"
+    assert len(payload["results"]) == 12
+    assert {row["forecastMethod"] for row in payload["results"]} == {"BASELINE"}
+
+
+def test_insufficient_history_skips_training(monkeypatch):
+    def fail_training(_feature_data):
+        raise AssertionError("training should not run")
+
+    monkeypatch.setattr("ml.api.train_direct_models", fail_training)
+    monkeypatch.setattr("ml.api.MINIMUM_HISTORY_DAYS", 28)
+
+    payload = generate_forecast_payload(make_tables(days=10))
+
+    assert payload["forecastMethod"] == "BASELINE"
+
+
+def test_minimum_history_days_can_be_configured(monkeypatch):
+    monkeypatch.setattr("ml.api.MINIMUM_HISTORY_DAYS", 46)
+
+    payload = generate_forecast_payload(make_tables(days=45))
+
+    assert payload["forecastMethod"] == "BASELINE"
+    assert payload["modelVersion"] == "baseline-v1"
+
+
 def test_forecast_endpoint_returns_forecast_payload():
     tables = make_tables()
     response = forecast(ForecastRequest(), tables)
 
     assert response["forecastMethod"] == "ML"
     assert len(response["results"]) == 12
+
+
+def test_generate_forecast_payload_falls_back_to_baseline_when_training_fails(monkeypatch):
+    def fail_training(_feature_data):
+        raise ValueError("not enough training rows")
+
+    monkeypatch.setattr("ml.api.train_direct_models", fail_training)
+
+    payload = generate_forecast_payload(make_tables())
+
+    assert payload["forecastMethod"] == "BASELINE"
+    assert payload["modelVersion"] == "baseline-v1"
+    assert len(payload["results"]) == 12
+    assert {row["forecastMethod"] for row in payload["results"]} == {"BASELINE"}
