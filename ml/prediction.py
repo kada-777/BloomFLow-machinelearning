@@ -37,7 +37,6 @@ def build_forecast_results(
     flowers: pd.DataFrame,
     cutoff_date: date,
     model_version: str = "hgb-v1",
-    model_name: str = "HistGradientBoostingRegressor",
     forecast_method: str = "ML",
 ) -> pd.DataFrame:
     """Pack direct model predictions with branch, flower, and forecast metadata."""
@@ -65,7 +64,6 @@ def build_forecast_results(
         frame["horizon"] = horizon_number
         frame["forecastDemand"] = pd.Series(predictions, index=frame.index).clip(lower=0)
         frame["forecastMethod"] = forecast_method
-        frame["modelName"] = model_name
         frame["modelVersion"] = model_version
         frame["generatedAt"] = generated_at
         result_frames.append(frame)
@@ -82,7 +80,6 @@ def build_baseline_results(
     cutoff_date: date,
     model_version: str = "baseline-v1",
     window: int = 7,
-    model_name: str = "SevenDayMovingAverage",
     forecast_method: str = "BASELINE",
 ) -> pd.DataFrame:
     """Build one seven-day moving-average forecast for each direct horizon."""
@@ -113,7 +110,6 @@ def build_baseline_results(
         frame["forecastDate"] = cutoff_date + timedelta(days=horizon)
         frame["horizon"] = horizon
         frame["forecastMethod"] = forecast_method
-        frame["modelName"] = model_name
         frame["modelVersion"] = model_version
         frame["generatedAt"] = generated_at
         result_frames.append(frame)

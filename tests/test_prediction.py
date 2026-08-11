@@ -94,5 +94,4 @@ def test_build_baseline_results_uses_seven_day_moving_average_for_each_horizon()
     assert len(result) == 3
     assert result["forecastDemand"].tolist() == [4.0, 4.0, 4.0]
     assert set(result["forecastMethod"]) == {"BASELINE"}
-    assert set(result["modelName"]) == {"SevenDayMovingAverage"}
     assert set(result["modelVersion"]) == {"baseline-v1"}

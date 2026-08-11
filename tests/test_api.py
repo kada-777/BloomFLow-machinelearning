@@ -55,6 +55,28 @@ def test_generate_forecast_payload_returns_api_ready_results():
     assert {row["horizon"] for row in payload["results"]} == {1, 2, 3}
 
 
+def test_generate_forecast_payload_returns_only_eligible_pairs():
+    payload = generate_forecast_payload(
+        make_tables(),
+        eligible_pairs=[{"branchId": 1, "flowerId": 10}],
+    )
+
+    assert len(payload["results"]) == 3
+    assert {(row["branchId"], row["flowerId"]) for row in payload["results"]} == {(1, 10)}
+
+
+def test_eligible_pairs_bypass_global_history_gate(monkeypatch):
+    monkeypatch.setenv("MINIMUM_HISTORY_DAYS", "100")
+
+    payload = generate_forecast_payload(
+        make_tables(),
+        eligible_pairs=[{"branchId": 1, "flowerId": 10}],
+    )
+
+    assert payload["forecastMethod"] == "ML"
+    assert len(payload["results"]) == 3
+
+
 def test_generate_forecast_payload_uses_baseline_for_insufficient_history():
     payload = generate_forecast_payload(make_tables(days=10))
 

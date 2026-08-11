@@ -1,9 +1,9 @@
 from datetime import date
 import os
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ml.data import (
     get_latest_sales_date,
@@ -33,9 +33,15 @@ def get_minimum_history_days() -> int:
     return minimum_days
 
 
+class EligiblePair(BaseModel):
+    branchId: int = Field(gt=0)
+    flowerId: int = Field(gt=0)
+
+
 class ForecastRequest(BaseModel):
     forecastDate: Optional[date] = None
     modelVersion: str = "hgb-v1"
+    eligiblePairs: Optional[List[EligiblePair]] = None
 
 
 def get_training_tables():
@@ -47,6 +53,7 @@ def generate_forecast_payload(
     tables: dict,
     forecast_date: Optional[date] = None,
     model_version: str = "hgb-v1",
+    eligible_pairs: Optional[List[dict]] = None,
 ) -> dict:
     """Run the forecast pipeline and return a JSON-ready response payload."""
     minimum_history_days = get_minimum_history_days()
@@ -62,6 +69,16 @@ def generate_forecast_payload(
             tables["flowers"],
             cutoff_date=cutoff_date,
         )
+        if eligible_pairs is not None:
+            eligible_keys = {
+                (pair["branchId"], pair["flowerId"])
+                for pair in eligible_pairs
+            }
+            results = results[
+                results[["branchId", "flowerId"]]
+                .apply(tuple, axis=1)
+                .isin(eligible_keys)
+            ]
         return {
             "cutoffDate": cutoff_date,
             "forecastMethod": "BASELINE",
@@ -69,7 +86,7 @@ def generate_forecast_payload(
             "results": results.to_dict(orient="records"),
         }
 
-    if not has_sufficient_sales_history(
+    if eligible_pairs is None and not has_sufficient_sales_history(
         tables["daily_sales"], minimum_history_days
     ):
         return build_baseline_payload(
@@ -77,6 +94,18 @@ def generate_forecast_payload(
         )
 
     sales_grid = build_complete_sales_grid(tables, cutoff_date=cutoff_date)
+    if eligible_pairs is not None:
+        eligible_keys = {
+            (pair["branchId"], pair["flowerId"])
+            for pair in eligible_pairs
+        }
+        sales_grid = sales_grid[
+            sales_grid[["branchId", "flowerId"]]
+            .apply(tuple, axis=1)
+            .isin(eligible_keys)
+        ].reset_index(drop=True)
+        if sales_grid.empty:
+            raise ValueError("eligiblePairs must contain at least one valid pair")
     feature_data = add_forecast_targets(add_model_features(sales_grid))
     try:
         models = train_direct_models(feature_data)
@@ -110,6 +139,11 @@ def forecast(
             tables,
             forecast_date=request.forecastDate,
             model_version=request.modelVersion,
+            eligible_pairs=(
+                [pair.model_dump() for pair in request.eligiblePairs]
+                if request.eligiblePairs is not None
+                else None
+            ),
         )
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error))
