@@ -1,3 +1,4 @@
+from math import ceil
 from typing import Union
 
 import pandas as pd
@@ -59,7 +60,7 @@ def build_recommendation_plan(
         opening_stock = projected_stock[pair]
         opening_stock_values.append(opening_stock)
         required_stock = row.forecastDemand + safety_stock
-        recommendation = max(0.0, required_stock - opening_stock)
+        recommendation = ceil(max(0.0, required_stock - opening_stock))
         closing_stock = opening_stock + recommendation - row.forecastDemand
         projected_stock[pair] = closing_stock
         recommendations.append(recommendation)

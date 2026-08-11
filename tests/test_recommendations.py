@@ -1,4 +1,5 @@
 from datetime import date
+from numbers import Integral
 
 import pandas as pd
 
@@ -51,3 +52,29 @@ def test_recommendation_is_zero_when_projected_stock_covers_need():
 
     assert result.loc[0, "recommendedQuantity"] == 0
     assert result.loc[0, "projectedEndingStock"] == 5
+
+
+def test_recommendation_quantity_is_ceiled_to_whole_units():
+    forecasts = pd.DataFrame(
+        {
+            "date": [date(2025, 1, 1)],
+            "branchId": [1],
+            "flowerId": [10],
+            "forecastDemand": [12.25],
+        }
+    )
+    inventory = pd.DataFrame(
+        {
+            "branchId": [1],
+            "flowerId": [10],
+            "currentUsableStock": [4],
+            "inTransitStock": [2],
+        }
+    )
+
+    result = build_recommendation_plan(forecasts, inventory, safety_stock=3)
+
+    assert result.loc[0, "recommendedQuantity"] == 10
+    assert isinstance(result.loc[0, "recommendedQuantity"], Integral)
+    assert result.loc[0, "forecastDemand"] == 12.25
+    assert result.loc[0, "projectedEndingStock"] == 3.75
