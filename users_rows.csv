@@ -1,0 +1,8 @@
+id,email,password,role,branchId,isActive
+1,superadmin@bloomflow.test,$2b$12$sAbOEbZU9ap1f.86Aeexsu4.cYs0h3xIfoMt4xSV7nFshRIREEX3O,SUPERADMIN,,true
+2,head-office@bloomflow.test,$2b$12$sAbOEbZU9ap1f.86Aeexsu4.cYs0h3xIfoMt4xSV7nFshRIREEX3O,STAFF_HEAD_OFFICE,,true
+3,staff.bandung@bloomflow.test,$2b$12$nqzyltIt6KqTH7maui10he.w3gW/Xd4tQHUDX7OzP8u9WAspkSaum,STAFF_BRANCH,2,true
+4,staff.jakartapusat@bloomflow.test,"$2b$12$L9mT3nQv5gA2W8hYxP1K7.3bU9QYjvNw4MZqRkFtCeXsHlDpJaEiO
+",STAFF_BRANCH,1,true
+5,staff.bekasi@bloomflow.test,$2b$12$acVIjgROfeicdjSYSThsru/8BODSUg77UYDVHWOGW9K7E5AKF21/S,STAFF_BRANCH,3,true
+8,staff.surabaya@bloomflow.test,$2b$12$CET9DkZUXW/tWIBAU65QG.xiZQpCFvBA4RjaliceGw3lip8lCC8Ku,STAFF_BRANCH,4,true

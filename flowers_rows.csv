@@ -1,0 +1,39 @@
+id,name,variety
+1,Mawar,Mawar Merah
+2,Mawar,Mawar Putih
+3,Mawar,Mawar Pink
+4,Mawar,"Mawar Kuning
+"
+5,Mawar,Mawar Peach
+6,Mawar,"Mawar Ungu
+"
+7,Krisan,Krisan Putih
+8,"Krisan ",Krisan Kuning
+9,Krisan,Krisan Ungu
+10,Krisan,Krisan Hijau
+11,Carnation,Carnation Merah
+12,Carnation,Carnation Pink
+13,Carnation,Carnation Putih
+14,Gerbera,Gerbera Merah
+15,Gerbera,Gerbera Putih
+16,"Gerbera ",Gerbera Pink
+17,Gerbera,Gerbera Kuning
+18,"Gerbera ",Gerbera Orange
+19,Tulip,Tulip Merah
+20,Tulip,"Tulip Putih
+"
+21,Tulip,Tulip Pink
+22,Tulip,Tulip Kuning
+23,Tulip,Tulip Ungu
+24,Lily,Lily Putih
+25,Lily,Lily Pink
+26,Lily,Lily Orange
+27,Sunflower,Sunflower Mini
+28,Sunflower,Sunflower Giant
+29,Daisy,Daisy Putih
+30,Daisy,Daisy Kuning
+31,Daisy,Daisy Gerbera
+32,Anggrek,Phalaenopsis White
+33,Anggrek,Phalaenopsis Purple
+34,Anggrek,Dendrobium
+35,Anggrek,Vanda
