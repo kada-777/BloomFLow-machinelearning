@@ -53,39 +53,39 @@ SALE_DAMAGE_RATE_RANGE = (0.01, 0.06)
 
 # Weekly multiplier ranges [min, max] per weekday (0=Monday, 6=Sunday)
 WEEKLY_RANGES = {
-    0: (0.6, 0.8),   # Monday
-    1: (0.6, 0.8),   # Tuesday
-    2: (0.7, 0.9),   # Wednesday
-    3: (0.8, 1.0),   # Thursday
-    4: (1.0, 1.2),   # Friday
-    5: (1.2, 1.6),   # Saturday
-    6: (1.1, 1.5),   # Sunday
+    0: (0.75, 0.90),  # Monday
+    1: (0.75, 0.90),  # Tuesday
+    2: (0.80, 0.95),  # Wednesday
+    3: (0.90, 1.05),  # Thursday
+    4: (1.00, 1.15),  # Friday
+    5: (1.10, 1.30),  # Saturday
+    6: (1.05, 1.25),  # Sunday
 }
 
 # Seasonal spikes: (month, day) -> (range_min, range_max, duration_days)
 # Updated for 2025-2026 period
 SEASONAL_SPIKES = {
-    (2, 14): (2.2, 2.8, 3),    # Valentine
-    (5, 1):  (1.3, 1.7, 14),   # Graduation May
-    (11, 1): (1.3, 1.7, 14),   # Graduation Nov
-    (12, 22): (1.2, 1.6, 5),   # Christmas
-    (3, 30): (1.6, 2.0, 5),    # Lebaran 2026 (March 30 - April 1)
-    (4, 21): (1.2, 1.5, 3),    # Hari Kartini
-    (8, 17): (1.4, 1.8, 5),    # Kemerdekaan RI
-    (8, 12): (1.1, 1.3, 3),    # Hari Ayah (optional, minor)
-    (12, 25): (1.2, 1.6, 5),   # Christmas
+    (2, 14): (1.45, 1.75, 3),  # Valentine
+    (5, 1):  (1.15, 1.35, 14), # Graduation May
+    (11, 1): (1.15, 1.35, 14), # Graduation Nov
+    (12, 22): (1.10, 1.30, 5), # Christmas
+    (3, 30): (1.25, 1.50, 5),  # Lebaran 2026 (March 30 - April 1)
+    (4, 21): (1.10, 1.25, 3),  # Hari Kartini
+    (8, 17): (1.15, 1.35, 5),  # Kemerdekaan RI
+    (8, 12): (1.05, 1.15, 3),  # Hari Ayah (optional, minor)
+    (12, 25): (1.10, 1.30, 5), # Christmas
 }
 
 # Base quantity range per branch (different market sizes)
 BRANCH_BASE_RANGES = {
-    1: (40, 80),   # Jakarta Pusat - biggest market
-    2: (25, 60),   # Bandung
-    3: (20, 50),   # Bekasi
-    4: (30, 70),   # Surabaya - second biggest market
+    1: (18, 38),   # Jakarta Pusat - biggest market
+    2: (12, 28),   # Bandung
+    3: (10, 24),   # Bekasi
+    4: (15, 34),   # Surabaya - second biggest market
 }
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in dir() else os.getcwd()
-OUT_DIR = os.path.join(SCRIPT_DIR, "output")
+OUT_DIR = os.path.join(SCRIPT_DIR, "output_v2")
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
@@ -222,9 +222,11 @@ def log_movement(flower_id, location_type, branch_id, batch_id, mtype, qty,
 # Stage 1+2: Receiving/QC -> Batches (farm -> HO)
 # ---------------------------------------------------------------------------
 def run_receiving(day):
-    """Farm ships daily, all flowers, qty based on total branch demand."""
+    """Farm ships one HO supply target per flower, split across farms."""
+    receiving_by_farm = {}
     for farm in farms:
         receiving_id = ids["receiving"].next()
+        receiving_by_farm[farm["id"]] = receiving_id
         receivings.append({
             "id": receiving_id,
             "farmId": farm["id"],
@@ -232,20 +234,30 @@ def run_receiving(day):
             "status": "COMPLETED",
         })
 
-        for fl in flower_ids:
-            # Calculate total demand across all branches
-            total_demand = sum(
-                calculate_daily_demand(b, fl, day) for b in branch_ids
-            )
+    for fl in flower_ids:
+        d_plus_2 = sum(calculate_daily_demand(b, fl, day + timedelta(days=2)) for b in branch_ids)
+        d_plus_3 = sum(calculate_daily_demand(b, fl, day + timedelta(days=3)) for b in branch_ids)
+        forecast_target = (d_plus_2 + d_plus_3) / 2
 
-            # Farm ships total demand + buffer (10-30%)
-            buffer = random.uniform(1.10, 1.30)
-            shipped_qty = max(1, int(total_demand * buffer))
+        buffer = random.uniform(1.05, 1.15)
+        total_shipped = max(len(farms), int(forecast_target * buffer))
+        remaining = total_shipped
 
-            # QC: unusable rate 2-8%
+        for index, farm in enumerate(farms):
+            farms_left = len(farms) - index
+            if farms_left == 1:
+                shipped_qty = remaining
+            else:
+                base_share = remaining / farms_left
+                share_noise = random.uniform(0.85, 1.15)
+                shipped_qty = max(1, round(base_share * share_noise))
+                shipped_qty = min(shipped_qty, remaining - (farms_left - 1))
+            remaining -= shipped_qty
+
             unusable_rate = random.uniform(*UNUSABLE_RATE_RANGE)
             unusable_qty = round(shipped_qty * unusable_rate)
             accepted_qty = shipped_qty - unusable_qty
+            receiving_id = receiving_by_farm[farm["id"]]
 
             receiving_items.append({
                 "id": ids["receiving_item"].next(),
@@ -258,7 +270,6 @@ def run_receiving(day):
                 "unusableNotes": "Rejected at QC: damaged or below grade" if unusable_qty > 0 else "",
             })
 
-            # Create batch for accepted qty (will be allocated same day)
             if accepted_qty > 0:
                 batch_id = ids["batch"].next()
                 batch = {
@@ -338,22 +349,38 @@ def prune_lots_index(branch_id, flower_id):
 
 
 def run_distribution(day):
-    """Allocate all accepted flowers to branches same day, demand-proportional."""
+    """Allocate all accepted HO stock to branches same day, demand-proportional."""
     for fl in flower_ids:
+        available = ho_available(fl)
+        if available <= 0:
+            continue
+
+        branch_demands = []
         for branch in branches:
             branch_id = int(branch["id"])
+            base_demand = calculate_daily_demand(branch_id, fl, day + timedelta(days=1))
+            allocation_noise = random.uniform(0.90, 1.10)
+            branch_demand = max(1, int(base_demand * allocation_noise))
+            branch_demands.append((branch_id, branch_demand))
 
-            # Calculate branch demand with noise
-            base_demand = calculate_daily_demand(branch_id, fl, day)
-            allocation_noise = random.uniform(0.85, 1.15)
-            branch_demand = max(0, int(base_demand * allocation_noise))
+        total_demand = sum(demand for _, demand in branch_demands)
+        remaining_available = available
+        remaining_demand = total_demand
 
-            if branch_demand <= 0:
-                continue
+        for index, (branch_id, branch_demand) in enumerate(branch_demands):
+            branches_left = len(branch_demands) - index
+            if branches_left == 1:
+                ship_qty = remaining_available
+            else:
+                proportional_qty = round(available * branch_demand / total_demand)
+                ship_qty = min(proportional_qty, remaining_available)
+                if remaining_available > 0 and remaining_demand > 0 and ship_qty == 0:
+                    ship_qty = 1
+                ship_qty = min(ship_qty, remaining_available - (branches_left - 1))
+                ship_qty = max(0, ship_qty)
+            remaining_available -= ship_qty
+            remaining_demand -= branch_demand
 
-            # Allocate from HO batches (FIFO)
-            available = ho_available(fl)
-            ship_qty = min(branch_demand, available)
             if ship_qty <= 0:
                 continue
 
