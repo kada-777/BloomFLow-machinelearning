@@ -75,13 +75,11 @@ configuration_keys:
     type: integer
     unit: day
     description: Durasi penentuan status GRADE_C sebelum menjadi DAMAGED.
-  AI_PLANNING_HORIZON:
+  MINIMUM_HISTORY_DAYS:
     type: integer
-    unit: day
-    description: Jangka waktu prediksi distribusi.
-  AI_MINIMUM_HISTORY:
-    type: integer
-    description: Minimum riwayat penjualan agar model ML dapat digunakan.
+    unit: distinct sales dates
+    default: 28
+    description: Minimum riwayat Daily Sales agar model ML dapat digunakan sebelum fallback baseline.
 enums:
   batch_status:
   - AVAILABLE
@@ -518,6 +516,31 @@ endpoints:
   summary: Generate rekomendasi distribusi menggunakan ML atau baseline
   access:
   - STAFF_HEAD_OFFICE
+  required_request_fields:
+  - planningDate
+  rules:
+  - Backend memvalidasi planningDate menggunakan aturan tanggal bisnis Asia/Jakarta.
+  - Backend menolak duplicate distribution plan untuk planningDate yang sama.
+  - Frontend tidak mengirim planningHorizon atau cutoff ML.
+  ml_integration:
+    endpoint: POST /forecast
+    request:
+      forecastDate: Cutoff Daily Sales yang dipilih backend; nama field dipertahankan sesuai wire contract ML.
+    fixed_horizons:
+    - 1
+    - 2
+    - 3
+    result_date_rule: forecastDate hasil = cutoffDate + horizon hari.
+    selection_rule: Backend memilih result dengan forecastDate yang sama dengan planningDate.
+    normative_example:
+      cutoffDate: 12 Agustus
+      results:
+      - horizon: 1
+        forecastDate: 13 Agustus
+      - horizon: 2
+        forecastDate: 14 Agustus
+      - horizon: 3
+        forecastDate: 15 Agustus
   result_status: DRAFT
 - id: 29
   method: GET
