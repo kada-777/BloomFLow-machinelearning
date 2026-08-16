@@ -16,7 +16,7 @@ BloomFlow terdiri dari React/Vite frontend, Express.js backend, layanan AI/ML Fa
 
 ## Deployment and Failure Handling
 
-Frontend dapat di-host di Vercel; backend dan AI/ML service di Render; database di managed PostgreSQL. Backend mengembalikan error API yang konsisten, mencatat operasi/audit error tanpa token atau password, dan menggunakan fallback forecast bila AI/ML gagal.
+Frontend dapat di-host di Vercel; backend dan AI/ML service di Render; database di managed PostgreSQL. Layanan ML menghasilkan baseline ketika minimum-history gate yang berlaku tidak terpenuhi atau training gagal karena data training. Backend mengembalikan error API yang konsisten, mencatat operasi/audit error tanpa token atau password, memvalidasi response ML, dan menggunakan fallback backend bila layanan ML unavailable atau gagal.
 
 ## Transaction Principle
 

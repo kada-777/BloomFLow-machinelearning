@@ -525,7 +525,25 @@ endpoints:
   ml_integration:
     endpoint: POST /forecast
     request:
-      forecastDate: Cutoff Daily Sales yang dipilih backend; nama field dipertahankan sesuai wire contract ML.
+      forecastDate:
+        type: date
+        required: false
+        description: Cutoff Daily Sales yang dipilih backend; nama field dipertahankan sesuai wire contract ML. Jika tidak diberikan, ML menggunakan tanggal Daily Sales terbaru yang tersedia.
+      modelVersion:
+        type: string
+        required: false
+        default: hgb-v1
+        description: Versi model untuk metadata hasil ML.
+      eligiblePairs:
+        type: array
+        required: false
+        items:
+          branchId: positive integer
+          flowerId: positive integer
+        description: Membatasi pasangan branch-flower yang diproses. ML dapat menolak input invalid, kosong, atau tanpa pasangan yang cocok dengan HTTP 422.
+    excluded_request_fields:
+    - planningDate
+    - planningHorizon
     fixed_horizons:
     - 1
     - 2

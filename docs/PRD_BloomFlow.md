@@ -648,9 +648,14 @@ Dataset berasal dari daily sales dan dapat ditambah dengan inventory serta calen
 
 ### 10.3 Model Versioning
 
-Setiap forecast run dan hasilnya menyediakan:
+Metadata forecast run/top-level menyediakan:
 
 - `cutoffDate`
+- `modelVersion`
+- `forecastMethod`
+
+Metadata setiap hasil forecast menyediakan:
+
 - `forecastDate`
 - `horizon`
 - `modelVersion`
@@ -659,7 +664,7 @@ Setiap forecast run dan hasilnya menyediakan:
 
 ### 10.4 Fallback
 
-Jika data tidak cukup atau service model gagal, backend dapat menggunakan baseline moving average. UI wajib menampilkan metode yang digunakan agar hasil ML dan fallback tidak tertukar.
+Layanan ML menggunakan baseline moving average jika pemeriksaan minimum history yang berlaku tidak terpenuhi atau training gagal karena data training. Backend menangani layanan ML yang unavailable atau gagal, menyediakan fallback backend, dan memvalidasi response ML sebelum digunakan. UI wajib menampilkan metode yang digunakan agar hasil ML dan fallback tidak tertukar.
 
 ### 10.5 Safety Constraints
 

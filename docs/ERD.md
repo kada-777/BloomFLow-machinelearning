@@ -283,7 +283,7 @@ CREATE INDEX idx_branch_stock_lots_fifo ON branch_stock_lots(branch_id, flower_i
 
 -- Dashboard queries
 CREATE INDEX idx_daily_sales_dashboard ON daily_sales(branch_id, sales_date);
-CREATE INDEX idx_forecast_results_lookup ON forecast_results(branch_id, flower_id, forecast_period);
+CREATE INDEX idx_forecast_results_lookup ON forecast_results(branch_id, flower_id, forecast_date, horizon);
 CREATE INDEX idx_distribution_orders_status ON distribution_orders(branch_id, status);
 CREATE INDEX idx_inventory_movements_audit ON inventory_movements(reference_type, reference_id);
 ```
