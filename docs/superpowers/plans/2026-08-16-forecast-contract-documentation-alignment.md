@@ -437,7 +437,7 @@ Expected: exit code 0 with no YAML syntax error; the source file remains unchang
 Run:
 
 ```powershell
-pytest -q
+python -m pytest -q
 ```
 
 Expected: all existing tests pass; no test, model, feature, API, or training file has changed.
