@@ -10,8 +10,8 @@ BloomFlow terdiri dari React/Vite frontend, Express.js backend, layanan AI/ML Fa
 ## Responsibilities
 
 - Frontend menampilkan halaman, mengumpulkan input, dan menampilkan error; validasi di frontend bukan otoritas bisnis.
-- Backend menangani JWT, role/branch scope, business rule, transaksi, FIFO, dan validasi output AI/ML.
-- AI/ML hanya menghasilkan forecast; ia tidak boleh mengubah stok, membuat movement, atau mengeksekusi workflow.
+- Backend menangani JWT, role/branch scope, business rule, transaksi, FIFO, validasi planning date dan duplicate plan, pemilihan cutoff Daily Sales, validasi output AI/ML, serta pemilihan hasil forecast yang tanggalnya cocok dengan `planningDate`.
+- AI/ML menerima cutoff melalui field request `forecastDate`, menggunakan Daily Sales sampai cutoff tersebut, dan mengembalikan horizon tetap 1-3; AI/ML tidak boleh mengubah stok, membuat movement, atau mengeksekusi workflow.
 - PostgreSQL menjaga data, constraint, locking, dan atomic transaction.
 
 ## Deployment and Failure Handling
