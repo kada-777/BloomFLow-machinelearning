@@ -111,7 +111,7 @@ Superadmin berfokus pada konfigurasi dan monitoring. Superadmin dapat melihat se
 - Mengelola master data bunga.
 - Mengatur default safety stock.
 - Mengatur parameter umur Fresh dan Grade C.
-- Mengatur parameter model AI/ML yang diperbolehkan, seperti planning horizon dan minimum history.
+- Mengatur minimum history AI/ML; horizon forecast MVP tetap 1, 2, dan 3 dan tidak dapat dikonfigurasi.
 
 #### Akses Lihat Seluruh Data
 
@@ -216,7 +216,6 @@ Dikelola oleh Superadmin.
 - Flower management.
 - Safety stock configuration.
 - Fresh period dan Grade C period configuration.
-- Planning horizon configuration.
 - Minimum historical data untuk model.
 - Perubahan konfigurasi wajib menyimpan `updatedBy` dan `updatedAt`.
 
@@ -319,16 +318,16 @@ Forecast dibuat oleh AI/ML model, bukan rumus moving average statis sebagai hasi
 - Current usable stock.
 - In-transit stock.
 - Day of week.
-- Tanggal dan planning horizon.
+- `forecastDate` sebagai cutoff Daily Sales yang dipilih backend.
 - Optional event/holiday indicator jika data tersedia.
 
 #### Output Model
 
 - Forecast demand per branch dan flower.
-- Forecast period.
-- Model version.
-- Confidence atau prediction interval jika didukung model.
-- Generated timestamp.
+- `cutoffDate` yang digunakan untuk Daily Sales.
+- `forecastDate` dan `horizon` untuk setiap hasil.
+- `forecastMethod`, `modelVersion`, dan `generatedAt`.
+- Horizon tetap 1, 2, dan 3.
 
 #### Pendekatan MVP
 
@@ -385,15 +384,16 @@ Dikelola Staff Head Office.
 
 #### Workflow
 
-1. Staff HO memilih planning date dan planning horizon.
-2. Backend mengambil data historis dan inventory snapshot.
-3. AI/ML menghasilkan forecast demand.
-4. Recommendation engine menghasilkan recommended quantity.
-5. Staff HO meninjau hasil.
-6. Staff HO dapat mengubah quantity.
-7. Jika diubah, adjustment reason wajib diisi.
-8. Plan difinalisasi.
-9. Distribution order dibuat dari final quantity.
+1. Staff HO memilih `planningDate`; Staff HO tidak memilih planning horizon.
+2. Backend memvalidasi planning date dan duplicate plan, lalu memilih cutoff Daily Sales.
+3. Backend meminta ML menghasilkan seluruh forecast horizon 1, 2, dan 3 dari cutoff tersebut.
+4. Backend memilih hasil dengan `forecastDate` yang sama dengan `planningDate`.
+5. Recommendation engine menghasilkan recommended quantity.
+6. Staff HO meninjau hasil.
+7. Staff HO dapat mengubah quantity.
+8. Jika diubah, adjustment reason wajib diisi.
+9. Plan difinalisasi.
+10. Distribution order dibuat dari final quantity.
 
 `adjustmentReason` hanya berfungsi sebagai catatan audit. Nilai tersebut tidak digunakan untuk melatih model secara otomatis pada MVP, tidak mengubah stok, dan tidak memicu proses lain.
 
@@ -640,7 +640,7 @@ available_quantity >= 0
 
 ### 10.1 Model Objective
 
-Memprediksi demand per flower per branch untuk planning horizon tertentu dan menghasilkan input bagi recommendation engine.
+Memprediksi demand per flower per branch untuk tiga tanggal berikutnya dari cutoff Daily Sales, dengan horizon tetap 1, 2, dan 3, serta menghasilkan input bagi recommendation engine.
 
 ### 10.2 Minimum Dataset
 
@@ -648,12 +648,13 @@ Dataset berasal dari daily sales dan dapat ditambah dengan inventory serta calen
 
 ### 10.3 Model Versioning
 
-Setiap hasil forecast menyimpan:
+Setiap forecast run dan hasilnya menyediakan:
 
-- `modelName`
+- `cutoffDate`
+- `forecastDate`
+- `horizon`
 - `modelVersion`
 - `forecastMethod`
-- `trainingDataUntil`
 - `generatedAt`
 
 ### 10.4 Fallback
