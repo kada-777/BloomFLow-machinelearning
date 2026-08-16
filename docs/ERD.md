@@ -78,9 +78,9 @@ erDiagram
     forecast_runs {
         int id PK
         datetime executedAt
+        date cutoffDate
         varchar modelVersion
         enum forecastMethod
-        datetime trainingDataUntil
     }
 
     forecast_results {
@@ -88,15 +88,16 @@ erDiagram
         int runId FK
         int branchId FK
         int flowerId FK
+        date forecastDate
+        int horizon
         decimal forecastDemand
-        varchar forecastPeriod
-        decimal confidenceInterval
+        datetime generatedAt
     }
 
     distribution_plans {
         int id PK
         enum status
-        date planningDate
+        date planningDate UK
     }
 
     distribution_plan_items {
