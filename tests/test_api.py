@@ -136,3 +136,41 @@ def test_generate_forecast_payload_falls_back_to_baseline_when_training_fails(mo
     assert payload["modelVersion"] == "baseline-v1"
     assert len(payload["results"]) == 12
     assert {row["forecastMethod"] for row in payload["results"]} == {"BASELINE"}
+
+
+def test_forecast_logs_request_data_to_terminal(caplog):
+    import logging
+    tables = make_tables()
+    req = ForecastRequest(modelVersion="hgb-v1")
+    with caplog.at_level(logging.INFO):
+        response = forecast(req, tables)
+
+    assert response["forecastMethod"] == "ML"
+    assert "Handling /forecast request with data:" in caplog.text
+    assert "hgb-v1" in caplog.text
+
+
+@pytest.mark.anyio
+async def test_middleware_logs_incoming_requests_to_terminal(caplog):
+    import logging
+    import httpx
+    from ml.api import app, get_training_tables
+
+    tables = make_tables()
+    app.dependency_overrides[get_training_tables] = lambda: tables
+
+    transport = httpx.ASGITransport(app=app)
+    with caplog.at_level(logging.INFO):
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/forecast",
+                json={"modelVersion": "hgb-v1"},
+            )
+            assert response.status_code == 200
+
+    app.dependency_overrides.clear()
+    assert "Incoming Request from" in caplog.text
+    assert "POST /forecast" in caplog.text
+    assert "hgb-v1" in caplog.text
+    assert "Completed POST /forecast -> Status 200" in caplog.text
+
